@@ -22,7 +22,10 @@ html, body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-tap-highlight-color: transparent;
+  /* 防止 iOS 输入框自动缩放时页面跳动 */
+  -webkit-text-size-adjust: 100%;
 }
 
 .hidden { display: none !important; }
@@ -49,7 +52,7 @@ html, body {
 .music-toggle {
   position: fixed;
   right: 16px;
-  bottom: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   z-index: 80;
   width: 50px;
   height: 50px;
@@ -80,6 +83,9 @@ html, body {
   justify-content: center;
   background: linear-gradient(160deg, #ffe5ec 0%, #ffc2d1 55%, #ffb3c6 100%);
   padding: 24px;
+  padding-top: calc(24px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
 }
 .lock-card {
   background: rgba(255, 255, 255, 0.92);
@@ -191,6 +197,7 @@ html, body {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(14px);
   box-shadow: 0 2px 16px rgba(251, 111, 146, 0.1);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 .topbar-inner {
   max-width: 1080px;
@@ -516,6 +523,7 @@ html, body {
   background: #fff;
   border-radius: 22px;
   padding: 30px 24px 26px;
+  padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px));
   width: 100%;
   max-width: 420px;
   max-height: 90vh;
@@ -675,12 +683,53 @@ html, body {
 
 /* 手机版（<=768px）默认就是流式布局，微调 */
 @media (max-width: 768px) {
-  .topbar-inner { padding: 12px 12px; }
-  .brand-text { font-size: 16px; }
-  .nav-btn { font-size: 13px; padding: 7px 10px; }
-  .hero-title { font-size: 26px; }
-  .album-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
-  .content { padding: 18px 12px 40px; }
+  .topbar-inner { padding: 10px 12px; gap: 8px; }
+  .brand-text { font-size: 15px; }
+  .brand-heart { font-size: 18px; }
+  .nav { gap: 4px; }
+  .nav-btn { font-size: 12px; padding: 7px 9px; white-space: nowrap; }
+
+  .hero { padding: 32px 0 20px; }
+  .hero-emoji { font-size: 52px; }
+  .hero-title { font-size: 22px; line-height: 1.35; }
+  .hero-sub { font-size: 13px; }
+  .days-counter { font-size: 14px; padding: 10px 20px; margin-top: 14px; }
+
+  .quick-stats { gap: 10px; }
+  .stat-card { padding: 16px 8px; }
+  .stat-num { font-size: 24px; }
+  .stat-label { font-size: 12px; }
+
+  .love-line { font-size: 14px; padding: 0 8px; }
+
+  .view-header h2 { font-size: 22px; }
+
+  /* 相册：手机端 3 列，更贴合屏幕比例 */
+  .album-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .album-caption { font-size: 11px; padding: 6px 8px; }
+  .play-icon { width: 40px; height: 40px; font-size: 17px; }
+  .type-badge { width: 24px; height: 24px; font-size: 13px; top: 6px; right: 6px; }
+
+  .content { padding: 16px 12px calc(40px + env(safe-area-inset-bottom, 0px)); }
+
+  .timeline { padding-left: 24px; }
+  .timeline-body img, .timeline-body video { max-height: 320px; }
+
+  /* 音乐按钮在手机上适当缩小 */
+  .music-toggle { width: 46px; height: 46px; font-size: 20px; right: 12px; }
+
+  /* 锁屏在小屏高度不足时可滚动 */
+  .lock-card { padding: 32px 22px 28px; }
+  .lock-title { font-size: 21px; }
+}
+
+/* 超小屏（<=380px，iPhone SE 等）进一步收紧 */
+@media (max-width: 380px) {
+  .hero-title { font-size: 20px; }
+  .days-counter { font-size: 13px; padding: 9px 16px; }
+  .album-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .nav-btn { font-size: 11px; padding: 6px 8px; }
+  .brand-text { font-size: 14px; }
 }
 
 /* 电脑版（>768px）：更宽松的排版、更宽内容、hover 效果 */
