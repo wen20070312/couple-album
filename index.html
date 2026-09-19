@@ -18,6 +18,10 @@
   <!-- 飘落的爱心背景 -->
   <div id="hearts-bg" aria-hidden="true"></div>
 
+  <!-- 背景音乐 -->
+  <audio id="bg-music" src="media/music/bg-music.wav" loop preload="none"></audio>
+  <button id="music-toggle" class="music-toggle" aria-label="背景音乐开关" title="背景音乐">🎵</button>
+
   <!-- ============ 密码门 ============ -->
   <div id="lock-screen" class="lock-screen">
     <div class="lock-card">
@@ -44,8 +48,7 @@
         </div>
         <nav class="nav">
           <button class="nav-btn active" data-view="home">🏠 首页</button>
-          <button class="nav-btn" data-view="photos">📸 照片</button>
-          <button class="nav-btn" data-view="videos">🎬 视频</button>
+          <button class="nav-btn" data-view="album">🖼️ 相册</button>
           <button class="nav-btn" data-view="timeline">🕰️ 时光</button>
         </nav>
       </div>
@@ -75,34 +78,22 @@
           </div>
           <div class="stat-card">
             <div class="stat-num" id="stat-days">0</div>
-            <div class="stat-label">天在一起</div>
+            <div class="stat-label">天</div>
           </div>
         </div>
       </section>
 
-      <!-- 照片墙 -->
-      <section id="view-photos" class="view">
+      <!-- 相册（照片+视频合并） -->
+      <section id="view-album" class="view">
         <div class="view-header">
-          <h2>📸 照片墙</h2>
-          <p>每一帧都是心动的证据</p>
+          <h2>🖼️ 我们的相册</h2>
+          <p>照片和视频，都是心动的证据</p>
         </div>
-        <div id="photo-grid" class="photo-grid"></div>
-        <div id="photos-empty" class="empty hidden">
+        <button id="add-media-btn" class="add-media-btn">➕ 添加照片 / 视频</button>
+        <div id="album-grid" class="album-grid"></div>
+        <div id="album-empty" class="empty hidden">
           <div class="empty-emoji">🌷</div>
-          <p>这里还空空的，等我们的第一张合照～</p>
-        </div>
-      </section>
-
-      <!-- 视频墙 -->
-      <section id="view-videos" class="view">
-        <div class="view-header">
-          <h2>🎬 视频墙</h2>
-          <p>会动的回忆，更让人心动</p>
-        </div>
-        <div id="video-list" class="video-list"></div>
-        <div id="videos-empty" class="empty hidden">
-          <div class="empty-emoji">🎞️</div>
-          <p>还没有视频哦，下次出去玩记得拍下来～</p>
+          <p>这里还空空的，点上方「添加照片/视频」<br/>存下我们的第一个回忆吧～</p>
         </div>
       </section>
 
@@ -121,10 +112,30 @@
     </footer>
   </div>
 
+  <!-- 添加媒体弹窗 -->
+  <div id="add-modal" class="modal hidden">
+    <div class="modal-card">
+      <button id="add-modal-close" class="modal-close" aria-label="关闭">✕</button>
+      <h3 class="modal-title">添加回忆 💕</h3>
+      <p class="modal-sub">选一张照片或一段视频，写下说明</p>
+      <input type="file" id="add-file-input" accept="image/*,video/*" />
+      <div class="modal-field">
+        <label>说明文字（可选）</label>
+        <input type="text" id="add-caption-input" placeholder="比如：第一次约会" maxlength="50" />
+      </div>
+      <div class="modal-field">
+        <label>日期（可选，用于时光排序）</label>
+        <input type="date" id="add-date-input" />
+      </div>
+      <div class="modal-preview" id="add-preview"></div>
+      <button id="add-save-btn" class="add-save-btn" disabled>保存 💗</button>
+    </div>
+  </div>
+
   <!-- 照片灯箱 -->
   <div id="lightbox" class="lightbox hidden">
     <button id="lightbox-close" class="lightbox-close" aria-label="关闭">✕</button>
-    <img id="lightbox-img" src="" alt="" />
+    <div id="lightbox-media"></div>
     <div id="lightbox-caption" class="lightbox-caption"></div>
   </div>
 

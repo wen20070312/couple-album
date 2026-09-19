@@ -1,6 +1,10 @@
 # 临时脚本
 _make_icons.py
+_make_music.py
 *.pyc
+
+# 本地开发记录（不发布）
+开发记录.md
 
 # 系统文件
 Thumbs.db

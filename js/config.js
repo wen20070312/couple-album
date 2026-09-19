@@ -23,5 +23,12 @@ window.COUPLE_CONFIG = {
 
   // 相册标题 / 女主角昵称
   albumTitle: '我们的相册',
-  girlName: '宝贝'
+  girlName: '宝贝',
+
+  // 背景音乐（可换成你自己喜欢的曲子，放 media/music/ 目录）
+  // 换成 mp3 更省流量，wav 兼容性更好
+  backgroundMusic: 'media/music/bg-music.wav',
+
+  // 背景音乐是否默认开启（true=进入就自动播放，false=需手动点🎵）
+  musicAutoPlay: false
 };
