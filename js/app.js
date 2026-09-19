@@ -3,10 +3,9 @@
 // ============================================================
 (function () {
   const CFG = window.COUPLE_CONFIG;
-  const STORAGE_KEY = 'couple_album_user_media_v1';
+  const STORAGE = window.AlbumStorage;
 
-  // ---------- 用户添加的媒体（本地永久存储） ----------
-  // 内置媒体（js/media.js 里的） + 用户上传的（localStorage）合并展示
+  // ---------- 内置媒体（js/media.js 里的） ----------
   function getBuiltinMedia() {
     return {
       photos: (window.MEDIA && window.MEDIA.photos) || [],
@@ -14,33 +13,35 @@
     };
   }
 
-  function getUserMedia() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function saveUserMedia(list) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-      return true;
-    } catch (e) {
-      // 存储超限时提示
-      return false;
-    }
-  }
-
-  // 合并所有媒体（照片+视频统一成 items 数组）
-  function getAllMedia() {
+  // 合并所有媒体（内置 + 用户上传），统一成 items 数组
+  // 用户上传的存 IndexedDB，返回 blob，需要生成 objectURL
+  async function getAllMedia() {
     const builtin = getBuiltinMedia();
-    const user = getUserMedia();
     const items = [];
+
     builtin.photos.forEach(p => items.push({ type: 'photo', src: p.src, caption: p.caption || '', date: p.date || '', source: 'builtin' }));
     builtin.videos.forEach(v => items.push({ type: 'video', src: v.src, caption: v.caption || '', date: v.date || '', source: 'builtin' }));
-    user.forEach(u => items.push({ type: u.type, src: u.src, caption: u.caption || '', date: u.date || '', source: 'user' }));
+
+    // 用户上传的
+    let userMedia = [];
+    try {
+      userMedia = await STORAGE.getAllUserMedia();
+    } catch (e) {
+      userMedia = [];
+    }
+    userMedia.forEach(u => {
+      const url = URL.createObjectURL(u.blob);
+      items.push({ type: u.type, src: url, caption: u.caption || '', date: u.date || '', source: 'user' });
+    });
+
+    // 按日期排序（有日期的在前，按日期升序；无日期的按创建时间）
+    items.sort((a, b) => {
+      const da = a.date || '';
+      const db = b.date || '';
+      if (da && db && da !== db) return da.localeCompare(db);
+      return 0;
+    });
+
     return items;
   }
 
@@ -61,10 +62,30 @@
 
   navBtns.forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
 
-  // ---------- 背景音乐 ----------
+  // ---------- 背景音乐（支持自定义上传） ----------
   const bgMusic = document.getElementById('bg-music');
   const musicToggle = document.getElementById('music-toggle');
   let musicPlaying = false;
+
+  // 设置音乐源
+  async function loadMusic() {
+    // 优先用自定义上传的音乐
+    try {
+      const custom = await STORAGE.getMusic();
+      if (custom && custom.blob) {
+        const url = URL.createObjectURL(custom.blob);
+        bgMusic.src = url;
+        musicToggle.classList.add('has-custom');
+        musicToggle.title = '背景音乐：' + (custom.name || '自定义音乐') + '（双击可更换）';
+        return;
+      }
+    } catch (e) { /* 忽略 */ }
+
+    // 否则用默认背景音乐
+    bgMusic.src = CFG.backgroundMusic;
+    musicToggle.classList.remove('has-custom');
+    musicToggle.title = '背景音乐（双击可更换）';
+  }
 
   function toggleMusic() {
     if (musicPlaying) {
@@ -75,15 +96,12 @@
       bgMusic.play().then(() => {
         musicPlaying = true;
         musicToggle.classList.add('playing');
-      }).catch(() => {
-        // 播放失败（浏览器自动播放限制）
-      });
+      }).catch(() => {});
     }
   }
 
   musicToggle.addEventListener('click', toggleMusic);
 
-  // 用户手动开启音乐（很多浏览器禁止自动播放，需交互）
   function tryAutoPlayMusic() {
     if (CFG.musicAutoPlay) {
       bgMusic.play().then(() => {
@@ -105,11 +123,14 @@
     const days = daysBetween(start, now);
     const el = document.getElementById('days-counter');
     if (days >= 0) {
-      el.textContent = '遇见你之后，已经是第 ' + days + ' 天啦';
+      el.textContent = '遇见' + (CFG.girlName || '你') + '之后，已经是第 ' + days + ' 天啦';
     } else {
       el.textContent = '爱你的每一天';
     }
     document.getElementById('stat-days').textContent = days >= 0 ? days : '∞';
+    // 首页标题也带名字
+    const heroTitle = document.getElementById('hero-title');
+    if (heroTitle) heroTitle.textContent = '遇见' + (CFG.girlName || '你') + '之后';
   }
 
   // ---------- 每日情话 ----------
@@ -122,11 +143,11 @@
   }
 
   // ---------- 相册（照片+视频合并） ----------
-  function renderAlbum() {
+  async function renderAlbum() {
     const grid = document.getElementById('album-grid');
     const empty = document.getElementById('album-empty');
     grid.innerHTML = '';
-    const items = getAllMedia();
+    const items = await getAllMedia();
     const photos = items.filter(i => i.type === 'photo');
     const videos = items.filter(i => i.type === 'video');
     document.getElementById('stat-photos').textContent = photos.length;
@@ -148,16 +169,20 @@
         img.alt = it.caption || '照片';
         img.loading = 'lazy';
         card.appendChild(img);
-        card.addEventListener('click', () => openLightbox(it));
       } else {
         const thumb = document.createElement('div');
         thumb.className = 'video-thumb';
-        thumb.innerHTML = '<span class="play-icon">▶</span>';
+        const video = document.createElement('video');
+        video.src = it.src;
+        video.preload = 'metadata';
+        video.muted = true;
+        thumb.appendChild(video);
+        thumb.innerHTML += '<span class="play-icon">▶</span>';
         card.appendChild(thumb);
-        card.addEventListener('click', () => openLightbox(it));
       }
 
-      // 类型角标
+      card.addEventListener('click', () => openLightbox(it));
+
       const badge = document.createElement('span');
       badge.className = 'type-badge ' + it.type;
       badge.textContent = it.type === 'photo' ? '📷' : '🎬';
@@ -174,12 +199,10 @@
   }
 
   // ---------- 时间线 ----------
-  function renderTimeline() {
+  async function renderTimeline() {
     const tl = document.getElementById('timeline');
     tl.innerHTML = '';
-    const items = getAllMedia();
-
-    items.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const items = await getAllMedia();
 
     if (!items.length) {
       tl.innerHTML = '<div class="empty"><div class="empty-emoji">🌷</div><p>还没有回忆哦，快去创造属于你们的故事吧～</p></div>';
@@ -307,7 +330,6 @@
     pendingType = file.type.startsWith('video') ? 'video' : 'photo';
     pendingFile = file;
 
-    // 预览
     addPreview.innerHTML = '';
     const url = URL.createObjectURL(file);
     if (pendingType === 'photo') {
@@ -324,40 +346,101 @@
     addSaveBtn.disabled = false;
   });
 
-  addSaveBtn.addEventListener('click', () => {
+  addSaveBtn.addEventListener('click', async () => {
     if (!pendingFile) return;
 
-    // 检查大小（localStorage 上限约 5MB，超出的提示）
-    if (pendingFile.size > 4.5 * 1024 * 1024) {
-      alert('这个文件太大了（超过 4.5MB）💦\n\n提示：浏览器本地存储空间有限，照片建议 2MB 以内，视频建议 3MB 以内哦～');
+    const item = {
+      type: pendingType,
+      blob: pendingFile,
+      caption: addCaptionInput.value.trim(),
+      date: addDateInput.value || ''
+    };
+
+    addSaveBtn.disabled = true;
+    addSaveBtn.textContent = '保存中…';
+    try {
+      await STORAGE.addMedia(item);
+      closeAddModal();
+      await refreshAll();
+    } catch (e) {
+      alert('保存失败，请重试 💦\n\n（错误：' + (e && e.message ? e.message : '未知') + '）');
+    } finally {
+      addSaveBtn.disabled = false;
+      addSaveBtn.textContent = '保存 💗';
+    }
+  });
+
+  // ---------- 自定义背景音乐上传 ----------
+  const musicModal = document.getElementById('music-modal');
+  const musicModalClose = document.getElementById('music-modal-close');
+  const musicFileInput = document.getElementById('music-file-input');
+  const musicSaveBtn = document.getElementById('music-save-btn');
+  const musicResetBtn = document.getElementById('music-reset-btn');
+  const musicUploadHint = document.getElementById('music-upload-hint');
+
+  function openMusicModal() {
+    musicModal.classList.remove('hidden');
+    musicFileInput.value = '';
+    musicSaveBtn.disabled = true;
+    musicUploadHint.textContent = '';
+  }
+  function closeMusicModal() {
+    musicModal.classList.add('hidden');
+  }
+
+  musicToggle.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    openMusicModal();
+  });
+  musicToggle.addEventListener('dblclick', () => openMusicModal());
+
+  musicModalClose.addEventListener('click', closeMusicModal);
+  musicModal.addEventListener('click', e => {
+    if (e.target === musicModal) closeMusicModal();
+  });
+
+  musicFileInput.addEventListener('change', () => {
+    const f = musicFileInput.files[0];
+    if (!f) return;
+    const okType = f.type.startsWith('audio') || /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(f.name);
+    if (!okType) {
+      musicUploadHint.textContent = '请选择音频文件（mp3/wav/m4a 等）';
+      musicSaveBtn.disabled = true;
       return;
     }
+    musicUploadHint.textContent = '已选择：' + f.name + '（' + (f.size / 1024 / 1024).toFixed(1) + ' MB）';
+    musicSaveBtn.disabled = false;
+  });
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      const item = {
-        type: pendingType,
-        src: dataUrl,
-        caption: addCaptionInput.value.trim(),
-        date: addDateInput.value || '',
-        source: 'user'
-      };
-      const list = getUserMedia();
-      list.push(item);
-      const ok = saveUserMedia(list);
-      if (!ok) {
-        alert('存储空间不足，保存失败 💦\n\n可以先把之前的大视频删掉，或者换小一点的图片。');
-        return;
-      }
-      closeAddModal();
-      renderAlbum();
-      renderTimeline();
-    };
-    reader.onerror = () => {
-      alert('读取文件失败，请重试 💦');
-    };
-    reader.readAsDataURL(pendingFile);
+  musicSaveBtn.addEventListener('click', async () => {
+    const f = musicFileInput.files[0];
+    if (!f) return;
+    musicSaveBtn.disabled = true;
+    musicSaveBtn.textContent = '保存中…';
+    try {
+      await STORAGE.addMusic(f, f.name);
+      await loadMusic();
+      closeMusicModal();
+      // 保存后自动播放新音乐
+      if (!musicPlaying) toggleMusic();
+      alert('背景音乐已更新为：' + f.name + ' 🎵');
+    } catch (e) {
+      alert('保存失败，请重试 💦');
+    } finally {
+      musicSaveBtn.disabled = false;
+      musicSaveBtn.textContent = '保存音乐';
+    }
+  });
+
+  musicResetBtn.addEventListener('click', async () => {
+    try {
+      await STORAGE.deleteMusic();
+      await loadMusic();
+      closeMusicModal();
+      alert('已恢复默认背景音乐 🎵');
+    } catch (e) {
+      alert('操作失败，请重试 💦');
+    }
   });
 
   // ---------- 爱心背景 ----------
@@ -377,7 +460,7 @@
     }, 600);
   }
 
-  // ---------- 响应式检测（电脑版 vs 手机版） ----------
+  // ---------- 响应式检测 ----------
   function applyResponsive() {
     const isMobile = window.innerWidth <= 768;
     document.body.classList.toggle('mobile', isMobile);
@@ -386,12 +469,24 @@
   window.addEventListener('resize', applyResponsive);
   applyResponsive();
 
-  // ---------- 解锁后初始化 ----------
-  window.__onUnlock = function () {
+  // ---------- 刷新所有视图 ----------
+  async function refreshAll() {
     renderDays();
     renderLoveLine();
-    renderAlbum();
-    renderTimeline();
+    await renderAlbum();
+    await renderTimeline();
+  }
+
+  // ---------- 解锁后初始化 ----------
+  window.__onUnlock = async function () {
+    // 迁移旧的 localStorage 数据到 IndexedDB
+    try {
+      const migrated = await STORAGE.migrateFromLocalStorage();
+      if (migrated) console.log('已迁移旧的本地媒体数据');
+    } catch (e) { /* 忽略 */ }
+
+    await loadMusic();
+    await refreshAll();
     spawnHearts();
     tryAutoPlayMusic();
   };

@@ -3,7 +3,7 @@
 // ============================================================
 window.COUPLE_CONFIG = {
   // 纪念日（恋爱开始日期），格式：年-月-日
-  anniversary: '2025-05-20',
+  anniversary: '2026-08-15',
 
   // 首页每天随机展示的一句情话
   loveLines: [
@@ -23,7 +23,7 @@ window.COUPLE_CONFIG = {
 
   // 相册标题 / 女主角昵称
   albumTitle: '我们的相册',
-  girlName: '宝贝',
+  girlName: '杨语馨',
 
   // 背景音乐（可换成你自己喜欢的曲子，放 media/music/ 目录）
   // 换成 mp3 更省流量，wav 兼容性更好

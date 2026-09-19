@@ -20,7 +20,7 @@
 
   <!-- 背景音乐 -->
   <audio id="bg-music" src="media/music/bg-music.wav" loop preload="none"></audio>
-  <button id="music-toggle" class="music-toggle" aria-label="背景音乐开关" title="背景音乐">🎵</button>
+  <button id="music-toggle" class="music-toggle" aria-label="背景音乐开关" title="背景音乐（双击可更换）">🎵</button>
 
   <!-- ============ 密码门 ============ -->
   <div id="lock-screen" class="lock-screen">
@@ -60,7 +60,7 @@
       <section id="view-home" class="view active">
         <div class="hero">
           <div class="hero-emoji">👩‍❤️‍👨</div>
-          <h2 class="hero-title">遇见你之后</h2>
+          <h2 class="hero-title" id="hero-title">遇见杨语馨之后</h2>
           <p class="hero-sub">每一天都是甜的 🍬</p>
           <div id="days-counter" class="days-counter"></div>
         </div>
@@ -139,8 +139,23 @@
     <div id="lightbox-caption" class="lightbox-caption"></div>
   </div>
 
+  <!-- 自定义背景音乐弹窗 -->
+  <div id="music-modal" class="modal hidden">
+    <div class="modal-card">
+      <button id="music-modal-close" class="modal-close" aria-label="关闭">✕</button>
+      <h3 class="modal-title">更换背景音乐 🎵</h3>
+      <p class="modal-sub">选择你喜欢的音乐，存到我们的相册里</p>
+      <input type="file" id="music-file-input" accept="audio/*" />
+      <div class="music-hint" id="music-upload-hint"></div>
+      <button id="music-save-btn" class="add-save-btn" disabled>保存音乐</button>
+      <button id="music-reset-btn" class="music-reset-btn">恢复默认音乐</button>
+      <p class="music-tip">💡 提示：点击右下角 🎵 按钮切换播放/暂停，双击 🎵 更换音乐</p>
+    </div>
+  </div>
+
   <script src="js/config.js"></script>
   <script src="js/media.js"></script>
+  <script src="js/storage.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
 </body>
