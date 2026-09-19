@@ -30,5 +30,5 @@ window.COUPLE_CONFIG = {
   backgroundMusic: 'media/music/bg-music.wav',
 
   // 背景音乐是否默认开启（true=进入就自动播放，false=需手动点🎵）
-  musicAutoPlay: false
+  musicAutoPlay: true
 };

@@ -67,9 +67,30 @@
   const musicToggle = document.getElementById('music-toggle');
   let musicPlaying = false;
 
-  // 设置音乐源
+  function setPlayingState(playing) {
+    musicPlaying = playing;
+    musicToggle.classList.toggle('playing', playing);
+  }
+
+  function playMusic() {
+    return bgMusic.play().then(() => setPlayingState(true)).catch(() => setPlayingState(false));
+  }
+
+  function pauseMusic() {
+    bgMusic.pause();
+    setPlayingState(false);
+  }
+
+  function toggleMusic() {
+    if (musicPlaying) pauseMusic();
+    else playMusic();
+  }
+
+  musicToggle.addEventListener('click', toggleMusic);
+
+  // 设置音乐源（优先自定义，否则默认）
   async function loadMusic() {
-    // 优先用自定义上传的音乐
+    const wasPlaying = musicPlaying;
     try {
       const custom = await STORAGE.getMusic();
       if (custom && custom.blob) {
@@ -77,39 +98,23 @@
         bgMusic.src = url;
         musicToggle.classList.add('has-custom');
         musicToggle.title = '背景音乐：' + (custom.name || '自定义音乐') + '（双击可更换）';
-        return;
+      } else {
+        bgMusic.src = CFG.backgroundMusic;
+        musicToggle.classList.remove('has-custom');
+        musicToggle.title = '背景音乐（双击可更换）';
       }
     } catch (e) { /* 忽略 */ }
-
-    // 否则用默认背景音乐
-    bgMusic.src = CFG.backgroundMusic;
-    musicToggle.classList.remove('has-custom');
-    musicToggle.title = '背景音乐（双击可更换）';
-  }
-
-  function toggleMusic() {
-    if (musicPlaying) {
-      bgMusic.pause();
-      musicPlaying = false;
-      musicToggle.classList.remove('playing');
-    } else {
-      bgMusic.play().then(() => {
-        musicPlaying = true;
-        musicToggle.classList.add('playing');
-      }).catch(() => {});
+    if (wasPlaying) {
+      bgMusic.play().catch(() => {});
     }
   }
 
-  musicToggle.addEventListener('click', toggleMusic);
-
-  function tryAutoPlayMusic() {
-    if (CFG.musicAutoPlay) {
-      bgMusic.play().then(() => {
-        musicPlaying = true;
-        musicToggle.classList.add('playing');
-      }).catch(() => {});
+  // 供密码门在「用户手势上下文」内调用，满足浏览器自动播放策略
+  window.__tryAutoPlayMusic = function () {
+    if (CFG.musicAutoPlay && !musicPlaying) {
+      playMusic();
     }
-  }
+  };
 
   // ---------- 在一起天数 ----------
   function daysBetween(a, b) {
@@ -488,6 +493,9 @@
     await loadMusic();
     await refreshAll();
     spawnHearts();
-    tryAutoPlayMusic();
+    window.__tryAutoPlayMusic();
   };
+
+  // 页面加载时预加载音乐源（密码门前就把 src 设置好，解锁时可直接播放）
+  loadMusic();
 })();

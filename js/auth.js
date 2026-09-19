@@ -21,6 +21,8 @@
     app.classList.remove('hidden');
     // 通知主应用开始初始化
     if (window.__onUnlock) window.__onUnlock();
+    // 在用户手势上下文内触发音乐自动播放（满足浏览器自动播放策略）
+    if (window.__tryAutoPlayMusic) window.__tryAutoPlayMusic();
   }
 
   async function tryUnlock() {
