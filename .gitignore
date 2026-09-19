@@ -1,0 +1,7 @@
+# 临时脚本
+_make_icons.py
+*.pyc
+
+# 系统文件
+Thumbs.db
+.DS_Store

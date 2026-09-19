@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#ff8fab" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="我们的相册" />
+  <meta name="description" content="只属于我们两个人的甜蜜小窝，藏满了照片和视频。" />
+  <title>我们的相册 💕</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- 飘落的爱心背景 -->
+  <div id="hearts-bg" aria-hidden="true"></div>
+
+  <!-- ============ 密码门 ============ -->
+  <div id="lock-screen" class="lock-screen">
+    <div class="lock-card">
+      <div class="lock-icon">💌</div>
+      <h1 class="lock-title">只给你看的小秘密</h1>
+      <p class="lock-subtitle">这是属于我们两个人的小世界<br/>请输入我们的专属密码</p>
+      <div class="lock-input-wrap">
+        <input type="password" id="pwd-input" inputmode="numeric" placeholder="输入密码" maxlength="16" autocomplete="off" />
+        <button id="pwd-submit" aria-label="解锁">💗</button>
+      </div>
+      <div id="lock-error" class="lock-error">密码不对哦，再想想～</div>
+      <p class="lock-hint">💭 提示：一个只属于我们的日子</p>
+    </div>
+  </div>
+
+  <!-- ============ 主应用 ============ -->
+  <div id="app" class="app hidden">
+    <!-- 顶部导航 -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <span class="brand-heart">💕</span>
+          <span class="brand-text">我们的相册</span>
+        </div>
+        <nav class="nav">
+          <button class="nav-btn active" data-view="home">🏠 首页</button>
+          <button class="nav-btn" data-view="photos">📸 照片</button>
+          <button class="nav-btn" data-view="videos">🎬 视频</button>
+          <button class="nav-btn" data-view="timeline">🕰️ 时光</button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- 内容区 -->
+    <main class="content">
+      <!-- 首页 -->
+      <section id="view-home" class="view active">
+        <div class="hero">
+          <div class="hero-emoji">👩‍❤️‍👨</div>
+          <h2 class="hero-title">遇见你之后</h2>
+          <p class="hero-sub">每一天都是甜的 🍬</p>
+          <div id="days-counter" class="days-counter"></div>
+        </div>
+        <div class="love-note">
+          <p id="love-line" class="love-line">“想把所有的温柔，都攒起来留给你。”</p>
+        </div>
+        <div class="quick-stats">
+          <div class="stat-card">
+            <div class="stat-num" id="stat-photos">0</div>
+            <div class="stat-label">张照片</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="stat-videos">0</div>
+            <div class="stat-label">段视频</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="stat-days">0</div>
+            <div class="stat-label">天在一起</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 照片墙 -->
+      <section id="view-photos" class="view">
+        <div class="view-header">
+          <h2>📸 照片墙</h2>
+          <p>每一帧都是心动的证据</p>
+        </div>
+        <div id="photo-grid" class="photo-grid"></div>
+        <div id="photos-empty" class="empty hidden">
+          <div class="empty-emoji">🌷</div>
+          <p>这里还空空的，等我们的第一张合照～</p>
+        </div>
+      </section>
+
+      <!-- 视频墙 -->
+      <section id="view-videos" class="view">
+        <div class="view-header">
+          <h2>🎬 视频墙</h2>
+          <p>会动的回忆，更让人心动</p>
+        </div>
+        <div id="video-list" class="video-list"></div>
+        <div id="videos-empty" class="empty hidden">
+          <div class="empty-emoji">🎞️</div>
+          <p>还没有视频哦，下次出去玩记得拍下来～</p>
+        </div>
+      </section>
+
+      <!-- 时间线 -->
+      <section id="view-timeline" class="view">
+        <div class="view-header">
+          <h2>🕰️ 我们的时光</h2>
+          <p>把回忆按日子串成一条线</p>
+        </div>
+        <div id="timeline" class="timeline"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Made with 💗 for you</p>
+    </footer>
+  </div>
+
+  <!-- 照片灯箱 -->
+  <div id="lightbox" class="lightbox hidden">
+    <button id="lightbox-close" class="lightbox-close" aria-label="关闭">✕</button>
+    <img id="lightbox-img" src="" alt="" />
+    <div id="lightbox-caption" class="lightbox-caption"></div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/media.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
