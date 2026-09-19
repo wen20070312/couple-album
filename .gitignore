@@ -6,6 +6,11 @@ _make_music.py
 # 本地开发记录（不发布）
 开发记录.md
 
+# 云函数部署/测试临时脚本（只保留 index.js 源码）
+cloud-function/*.js
+!cloud-function/index.js
+cloud-function/index.zip
+
 # 系统文件
 Thumbs.db
 .DS_Store

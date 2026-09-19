@@ -4,6 +4,7 @@
 (function () {
   const CFG = window.COUPLE_CONFIG;
   const STORAGE = window.AlbumStorage;
+  const COS = window.CosUpload;
 
   // ---------- 内置媒体（js/media.js 里的） ----------
   function getBuiltinMedia() {
@@ -13,8 +14,10 @@
     };
   }
 
-  // 合并所有媒体（内置 + 用户上传），统一成 items 数组
-  // 用户上传的存 IndexedDB，返回 blob，需要生成 objectURL
+  // ---------- 云端媒体清单（缓存） ----------
+  let cloudManifest = { items: [], bgm: null };
+
+  // 合并所有媒体（内置 + 云端），统一成 items 数组
   async function getAllMedia() {
     const builtin = getBuiltinMedia();
     const items = [];
@@ -22,19 +25,19 @@
     builtin.photos.forEach(p => items.push({ type: 'photo', src: p.src, caption: p.caption || '', date: p.date || '', source: 'builtin' }));
     builtin.videos.forEach(v => items.push({ type: 'video', src: v.src, caption: v.caption || '', date: v.date || '', source: 'builtin' }));
 
-    // 用户上传的
-    let userMedia = [];
+    // 云端媒体
     try {
-      userMedia = await STORAGE.getAllUserMedia();
+      const cloud = await COS.readManifest();
+      cloudManifest = cloud;
+      (cloud.items || []).forEach(u => {
+        items.push({ type: u.type, src: u.url, caption: u.caption || '', date: u.date || '', source: 'cloud' });
+      });
     } catch (e) {
-      userMedia = [];
+      // 云端读失败时，静默降级为仅内置媒体
+      console.warn('读取云端媒体失败：', e);
     }
-    userMedia.forEach(u => {
-      const url = URL.createObjectURL(u.blob);
-      items.push({ type: u.type, src: url, caption: u.caption || '', date: u.date || '', source: 'user' });
-    });
 
-    // 按日期排序（有日期的在前，按日期升序；无日期的按创建时间）
+    // 按日期排序
     items.sort((a, b) => {
       const da = a.date || '';
       const db = b.date || '';
@@ -62,7 +65,7 @@
 
   navBtns.forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
 
-  // ---------- 背景音乐（支持自定义上传） ----------
+  // ---------- 背景音乐（支持云端自定义） ----------
   const bgMusic = document.getElementById('bg-music');
   const musicToggle = document.getElementById('music-toggle');
   let musicPlaying = false;
@@ -88,16 +91,14 @@
 
   musicToggle.addEventListener('click', toggleMusic);
 
-  // 设置音乐源（优先自定义，否则默认）
+  // 设置音乐源（优先云端自定义，否则默认）
   async function loadMusic() {
     const wasPlaying = musicPlaying;
     try {
-      const custom = await STORAGE.getMusic();
-      if (custom && custom.blob) {
-        const url = URL.createObjectURL(custom.blob);
-        bgMusic.src = url;
+      if (cloudManifest.bgm && cloudManifest.bgm.url) {
+        bgMusic.src = cloudManifest.bgm.url;
         musicToggle.classList.add('has-custom');
-        musicToggle.title = '背景音乐：' + (custom.name || '自定义音乐') + '（双击可更换）';
+        musicToggle.title = '背景音乐：' + (cloudManifest.bgm.name || '自定义音乐') + '（双击可更换）';
       } else {
         bgMusic.src = CFG.backgroundMusic;
         musicToggle.classList.remove('has-custom');
@@ -133,7 +134,6 @@
       el.textContent = '爱你的每一天';
     }
     document.getElementById('stat-days').textContent = days >= 0 ? days : '∞';
-    // 首页标题也带名字
     const heroTitle = document.getElementById('hero-title');
     if (heroTitle) heroTitle.textContent = '遇见' + (CFG.girlName || '你') + '之后';
   }
@@ -354,28 +354,33 @@
   addSaveBtn.addEventListener('click', async () => {
     if (!pendingFile) return;
 
-    const item = {
-      type: pendingType,
-      blob: pendingFile,
-      caption: addCaptionInput.value.trim(),
-      date: addDateInput.value || ''
-    };
+    const caption = addCaptionInput.value.trim();
+    const date = addDateInput.value || '';
 
     addSaveBtn.disabled = true;
-    addSaveBtn.textContent = '保存中…';
+    addSaveBtn.textContent = '上传中…';
     try {
-      await STORAGE.addMedia(item);
+      // 1. 上传文件到 COS
+      const up = await COS.uploadFile(pendingFile, 'media');
+      // 2. 更新云端清单
+      const manifest = cloudManifest || { items: [], bgm: null };
+      manifest.items = manifest.items || [];
+      manifest.items.push({ type: pendingType, url: up.url, caption, date });
+      await COS.writeManifest(manifest);
+      cloudManifest = manifest;
+
       closeAddModal();
       await refreshAll();
+      alert('已上传到云端 ☁️ 任何设备打开都能看到啦～');
     } catch (e) {
-      alert('保存失败，请重试 💦\n\n（错误：' + (e && e.message ? e.message : '未知') + '）');
+      alert('上传失败，请重试 💦\n\n（错误：' + (e && e.message ? e.message : '未知') + '）');
     } finally {
       addSaveBtn.disabled = false;
       addSaveBtn.textContent = '保存 💗';
     }
   });
 
-  // ---------- 自定义背景音乐上传 ----------
+  // ---------- 自定义背景音乐上传（云端） ----------
   const musicModal = document.getElementById('music-modal');
   const musicModalClose = document.getElementById('music-modal-close');
   const musicFileInput = document.getElementById('music-file-input');
@@ -421,16 +426,22 @@
     const f = musicFileInput.files[0];
     if (!f) return;
     musicSaveBtn.disabled = true;
-    musicSaveBtn.textContent = '保存中…';
+    musicSaveBtn.textContent = '上传中…';
     try {
-      await STORAGE.addMusic(f, f.name);
+      // 1. 上传音乐到 COS
+      const up = await COS.uploadFile(f, 'media/music');
+      // 2. 更新云端清单的 bgm
+      const manifest = cloudManifest || { items: [], bgm: null };
+      manifest.bgm = { url: up.url, name: f.name };
+      await COS.writeManifest(manifest);
+      cloudManifest = manifest;
+
       await loadMusic();
       closeMusicModal();
-      // 保存后自动播放新音乐
       if (!musicPlaying) toggleMusic();
-      alert('背景音乐已更新为：' + f.name + ' 🎵');
+      alert('背景音乐已更新为：' + f.name + ' 🎵（云端同步）');
     } catch (e) {
-      alert('保存失败，请重试 💦');
+      alert('上传失败，请重试 💦\n\n（错误：' + (e && e.message ? e.message : '未知') + '）');
     } finally {
       musicSaveBtn.disabled = false;
       musicSaveBtn.textContent = '保存音乐';
@@ -439,7 +450,10 @@
 
   musicResetBtn.addEventListener('click', async () => {
     try {
-      await STORAGE.deleteMusic();
+      const manifest = cloudManifest || { items: [], bgm: null };
+      manifest.bgm = null;
+      await COS.writeManifest(manifest);
+      cloudManifest = manifest;
       await loadMusic();
       closeMusicModal();
       alert('已恢复默认背景音乐 🎵');
@@ -484,11 +498,12 @@
 
   // ---------- 解锁后初始化 ----------
   window.__onUnlock = async function () {
-    // 迁移旧的 localStorage 数据到 IndexedDB
+    // 先读云端清单（含背景音乐），让所有设备一致
     try {
-      const migrated = await STORAGE.migrateFromLocalStorage();
-      if (migrated) console.log('已迁移旧的本地媒体数据');
-    } catch (e) { /* 忽略 */ }
+      cloudManifest = await COS.readManifest();
+    } catch (e) {
+      cloudManifest = { items: [], bgm: null };
+    }
 
     await loadMusic();
     await refreshAll();
@@ -496,6 +511,6 @@
     window.__tryAutoPlayMusic();
   };
 
-  // 页面加载时预加载音乐源（密码门前就把 src 设置好，解锁时可直接播放）
-  loadMusic();
+  // 页面加载时预加载默认音乐源
+  bgMusic.src = CFG.backgroundMusic;
 })();
